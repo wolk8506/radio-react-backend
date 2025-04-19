@@ -1,0 +1,91 @@
+{
+  "paths": {
+
+
+    "/api/user/forgotPassword": {
+      "patch": {
+        "tags": ["Auth"],
+        "summary": "Post newPassword",
+        "parameters": [],
+        "requestBody": {
+          "description": "newPassword's object",
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchForgotPasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatchForgotPasswordResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "missing required name field or the field did not pass validation",
+            "content": {}
+          },
+
+          "401": {
+            "description": "This mail is not registered or Email not verify",
+            "content": {}
+          }
+        }
+      }
+    },
+
+    "/api/user/forgotPassword/{newPasswordToken}": {
+      "get": {
+        "tags": ["Auth"],
+        "summary": "Confirm new password",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "newPasswordToken",
+            "type": "string",
+            "example": "6fe48f15-6cbe-4275-9540-b8a04b3b264d",
+            "description": "newPasswordToken",
+            "required": true
+          }
+        ],
+
+        "responses": {
+          "302": {
+            "description": "Redirect to login route"
+          },
+
+          "404": {
+            "description": "User not found",
+            "content": {}
+          }
+        }
+      }
+    },
+
+
+
+
+
+
+
+    },
+
+
+
+  
+
+ 
+
+  
+
+   
+  }
+}
