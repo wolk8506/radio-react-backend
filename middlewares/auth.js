@@ -22,6 +22,10 @@ const auth = async (req, res, next) => {
     if (error.message === "Invalid sugnature") {
       error.status = 401;
     }
+
+    if (error.message === "invalid token") {
+      error.status = 401;
+    }
     next(error);
   }
 };
