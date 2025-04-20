@@ -1,17 +1,17 @@
-# устанавливаем официальный образ Node.js
-FROM node:19-alpine
+FROM node:22-alpine
 
-# указываем рабочую (корневую) директорию
-WORKDIR /app
+RUN mkdir -p /home/node/app/node_modules && chown -R node:node /home/node/app
 
-# копируем основные файлы приложения в рабочую директорию
-COPY package.json package-lock.json ./
+WORKDIR /home/node/app
 
-# устанавливаем указанные зависимости NPM на этапе установки образа
+COPY package*.json ./
+
+USER node
+
 RUN npm install
 
-# после установки копируем все файлы проекта в корневую директорию
-COPY . ./
+COPY --chown=node:node . .
 
-# запускаем основной скрипт в момент запуска контейнера
+EXPOSE 8080
+
 CMD npm start
