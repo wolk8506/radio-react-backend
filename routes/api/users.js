@@ -3,6 +3,7 @@ const router = express.Router();
 
 const { users: ctrl } = require("../../controllers");
 const { auth, upload, validation, ctrlWrapper } = require("../../middlewares");
+const { ensureValidToken } = require("../../middlewares/refreshTokenDropBox");
 const {
   joiSubscriptionSchema,
   joiResendVerifyEmailSchema,
@@ -21,6 +22,7 @@ router.patch(
 router.patch(
   "/avatars",
   auth,
+  ensureValidToken,
   upload.single("avatar"),
   ctrlWrapper(ctrl.updateAvatar)
 );

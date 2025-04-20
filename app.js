@@ -9,10 +9,18 @@ const swaggerDocument = require("./swagger.json");
 const authRouter = require("./routes/api/auth");
 const usersRouter = require("./routes/api/users");
 const recipeRouter = require("./routes/api/recipes");
+const filesRouter = require("./routes/api/files");
 
 const app = express();
 
 const formatsLogger = app.get("env") === "development" ? "dev" : "short";
+
+// const { refreshAccessToken } = require("./middlewares");
+const { refreshAccessToken } = require("./middlewares/refreshTokenDropBox");
+
+setInterval(async () => {
+  await refreshAccessToken();
+}, 3600000); // Обновление раз в час
 
 app.use(logger(formatsLogger));
 app.use(cors());
@@ -28,7 +36,7 @@ app.use("/doc", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 app.use("/api/auth", authRouter);
 app.use("/api/user", usersRouter);
 app.use("/api/recipe", recipeRouter);
-
+app.use("/api/files", filesRouter);
 app.use((req, res) => {
   res.status(404).json({ message: "Not found" });
 });
