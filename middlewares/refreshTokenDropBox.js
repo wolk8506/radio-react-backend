@@ -1,8 +1,6 @@
 const axios = require("axios");
 require("dotenv").config();
 
-let ACCESS_TOKEN = process.env.ACCESS_TOKEN;
-
 const refreshAccessToken = async () => {
   try {
     const response = await axios.post(
@@ -18,21 +16,22 @@ const refreshAccessToken = async () => {
       }
     );
 
-    ACCESS_TOKEN = response.data.access_token;
-    console.log("Обновленный токен:", ACCESS_TOKEN);
+    const newToken = response.data.access_token;
+    process.env.ACCESS_TOKEN = newToken; // ✅ Обновляем глобально
+    console.log("Обновленный токен:", newToken);
 
-    return ACCESS_TOKEN;
+    return newToken;
   } catch (error) {
     console.error("Ошибка обновления токена:", error.response?.data || error);
   }
 };
 
 const ensureValidToken = async (req, res, next) => {
-  if (!ACCESS_TOKEN) {
+  if (!process.env.ACCESS_TOKEN) {
     console.log("Токен истек, обновляем...");
     await refreshAccessToken();
   }
-  req.accessToken = ACCESS_TOKEN; // Передаем токен в запрос
+  req.accessToken = process.env.ACCESS_TOKEN; // ✅ Используем обновленный токен
   next();
 };
 
