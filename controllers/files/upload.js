@@ -1,3 +1,4 @@
+require("dotenv").config();
 const { Dropbox } = require("dropbox");
 const fetch = require("isomorphic-fetch"); // Import a fetch-compatible library for making HTTP requests
 
