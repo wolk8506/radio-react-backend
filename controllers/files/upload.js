@@ -1,17 +1,11 @@
-// const express = require("express");
 const { Dropbox } = require("dropbox");
 const fetch = require("isomorphic-fetch"); // Import a fetch-compatible library for making HTTP requests
-const dbx = new Dropbox({
-  accessToken: process.env.ACCESS_TOKEN,
-  fetch,
-});
-
-// const router = express.Router();
-// const ACCESS_TOKEN = "ВАШ_ТОКЕН"; // Замените на свой
-
-// const dbx = new Dropbox({ accessToken: ACCESS_TOKEN });
 
 const upload = async (req, res) => {
+  const dbx = new Dropbox({
+    accessToken: process.env.ACCESS_TOKEN,
+    fetch,
+  });
   try {
     if (!req.file) {
       return res.status(400).json({ message: "Файл не найден" });
