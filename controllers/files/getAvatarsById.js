@@ -2,12 +2,12 @@ require("dotenv").config();
 const { Dropbox } = require("dropbox"); // Import the Dropbox SDK
 const fetch = require("isomorphic-fetch"); // Import a fetch-compatible library for making HTTP requests
 
-const dbx = new Dropbox({
-  accessToken: process.env.ACCESS_TOKEN,
-  fetch,
-});
-
 const getAvatarsById = async (req, res) => {
+  const dbx = new Dropbox({
+    accessToken: process.env.ACCESS_TOKEN,
+    fetch,
+  });
+
   const { fileId } = req.params;
 
   try {
