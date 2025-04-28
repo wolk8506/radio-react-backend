@@ -4,7 +4,7 @@ const { files: ctrl } = require("../../controllers");
 const { ctrlWrapper, multer } = require("../../middlewares");
 const { ensureValidToken } = require("../../middlewares/refreshTokenDropBox");
 
-router.get("/:fileId", ensureValidToken, ctrlWrapper(ctrl.getImgById)); // Обновляем токен перед запросом
+router.get("/recipe/:fileId", ensureValidToken, ctrlWrapper(ctrl.getImgById)); // Обновляем токен перед запросом
 router.get(
   "/avatars/:fileId",
   ensureValidToken,
@@ -13,8 +13,9 @@ router.get(
 router.post(
   "/upload",
   ensureValidToken,
-  multer.single("file"),
+  multer.array("files", 20),
   ctrlWrapper(ctrl.upload)
-); // Перед загрузкой файла обновляем токен
+);
+router.delete("/delete", ensureValidToken, ctrlWrapper(ctrl.deleteFile));
 
 module.exports = router;

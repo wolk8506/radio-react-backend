@@ -5,6 +5,7 @@ const verifyEmail = require("./verifyEmail");
 const resendVerifyEmail = require("./resendVerifyEmail");
 const updateName = require("./updateName");
 const updateEmail = require("./updateEmail");
+const changePassword = require("./changePassword");
 
 module.exports = {
   getCurrent,
@@ -14,4 +15,5 @@ module.exports = {
   resendVerifyEmail,
   updateName,
   updateEmail,
+  changePassword,
 };

@@ -10,7 +10,7 @@ const getImgById = async (req, res) => {
   const { fileId } = req.params;
 
   try {
-    const response = await dbx.filesDownload({ path: `/${fileId}` });
+    const response = await dbx.filesDownload({ path: `/recipe/${fileId}` });
 
     // Получаем бинарные данные файла
     const fileData = response.result.fileBinary;
