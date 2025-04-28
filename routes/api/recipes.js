@@ -5,11 +5,13 @@ const { recipe: ctrl } = require("../../controllers");
 const { auth, validation, ctrlWrapper } = require("../../middlewares");
 const {
   recipeJoiSchema,
-  favoriteRecipeJoiSchema,
+  // favoriteRecipeJoiSchema,
 } = require("../../models/recipe");
 
 // Получение списка рецептов
 router.get("/", ctrlWrapper(ctrl.getRecipe));
+// Получение списка рецептов
+router.get("/categories", ctrlWrapper(ctrl.getRecipeCategories));
 // Получение одного рецепта по _id
 router.get("/:recipeId", ctrlWrapper(ctrl.getRecipeById));
 // Создание рецепта
@@ -26,14 +28,22 @@ router.put(
   validation(recipeJoiSchema),
   ctrlWrapper(ctrl.updateRecipeById)
 );
+// Удаление рецепта по _id
+router.delete("/:recipeId", auth, ctrlWrapper(ctrl.deleteRecipeById));
+
 // Добавление рецепта в избранное
 router.patch(
   "/:recipeId/favorite",
   auth,
-  validation(favoriteRecipeJoiSchema),
+  // validation(favoriteRecipeJoiSchema),
   ctrlWrapper(ctrl.updateRecipeFavoriteById)
 );
-// Удаление рецепта по _id
-router.delete("/:recipeId", auth, ctrlWrapper(ctrl.deleteRecipeById));
+
+// Удаление рецепта из избранного
+router.delete(
+  "/:recipeId/favorite",
+  auth,
+  ctrlWrapper(ctrl.removeRecipeFavoriteById)
+);
 
 module.exports = router;

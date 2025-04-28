@@ -6,7 +6,7 @@ const getRecipeById = async (req, res) => {
   const result = await Recipe.find({ _id: recipeId });
 
   if (result.length === 0) {
-    throw createError(404, `Contact with id=${recipeId} not found`);
+    throw createError(404, `Recipe with id=${recipeId} not found`);
   }
 
   res.json({

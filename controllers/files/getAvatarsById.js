@@ -13,7 +13,7 @@ const getAvatarsById = async (req, res) => {
   try {
     const response = await dbx.filesDownload({ path: `/avatars/${fileId}` });
 
-    // Получаем бинарные данные файла
+    // # Получаем бинарные данные файла
     const fileData = response.result.fileBinary;
 
     // Устанавливаем корректный заголовок MIME-тип (зависит от типа файла)

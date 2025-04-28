@@ -1,28 +1,32 @@
-const { Recipe } = require("../../models");
-const createError = require("http-errors");
+const { User } = require("../../models");
 
-const updateRecipeFavoriteById = async (req, res) => {
-  const { _id } = req.user;
+// Добавление рецепта в избранное
+const updateRecipeFavoriteById = async (req, res, next) => {
   const { recipeId } = req.params;
-  const { favorite } = req.body;
+  const userId = req.user._id;
 
-  const result = await Recipe.findOneAndUpdate(
-    { owner: _id, _id: recipeId },
-    { favorite },
-    { new: true }
-  );
+  try {
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "Пользователь не найден" });
+    }
 
-  if (!result) {
-    throw createError(404, `Recipe with id=${recipeId} not found`);
+    if (user.favorites.includes(recipeId)) {
+      return res
+        .status(400)
+        .json({ message: "Рецепт уже добавлен в избранное" });
+    }
+
+    user.favorites.push(recipeId);
+    await user.save();
+
+    res.status(200).json({
+      message: "Рецепт добавлен в избранное",
+      data: user,
+    });
+  } catch (error) {
+    next(error);
   }
-
-  res.json({
-    status: "success",
-    code: 200,
-    data: {
-      result,
-    },
-  });
 };
 
 module.exports = updateRecipeFavoriteById;

@@ -14,7 +14,7 @@ const updateRecipe = async (req, res) => {
   );
 
   if (!result) {
-    throw createError(404, `Contact with id=${recipeId} not found`);
+    throw createError(404, `Recipe with id=${recipeId} not found`);
   }
 
   res.json({

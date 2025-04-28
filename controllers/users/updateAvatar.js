@@ -1,14 +1,18 @@
+require("dotenv").config();
 const { User } = require("../../models");
 const fs = require("fs/promises");
 const Jimp = require("jimp");
 const { Dropbox } = require("dropbox");
 const crypto = require("crypto"); // Для генерации случайного имени
+const fetch = require("isomorphic-fetch"); // Import a fetch-compatible library for making HTTP requests
 
-require("dotenv").config();
-
-const dbx = new Dropbox({ accessToken: process.env.ACCESS_TOKEN });
+// const dbx = new Dropbox({ accessToken: process.env.ACCESS_TOKEN });
 
 const updateAvatar = async (req, res) => {
+  const dbx = new Dropbox({
+    accessToken: process.env.ACCESS_TOKEN,
+    fetch,
+  });
   const { path: tempUpload, originalname } = req.file;
 
   // Генерируем случайное имя файла
