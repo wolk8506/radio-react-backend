@@ -28,7 +28,7 @@ const refreshAccessToken = async () => {
 
 const ensureValidToken = async (req, res, next) => {
   if (!process.env.ACCESS_TOKEN) {
-    console.log("Токен истек, обновляем...");
+    console.log("Токен отсутствует, обновляем...");
     await refreshAccessToken();
   }
   req.accessToken = process.env.ACCESS_TOKEN; // ✅ Используем обновленный токен

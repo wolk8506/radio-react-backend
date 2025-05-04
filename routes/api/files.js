@@ -10,6 +10,17 @@ router.get(
   ensureValidToken,
   ctrlWrapper(ctrl.getAvatarsById)
 ); // Обновляем токен перед запросом
+router.get(
+  "/walpaper/:fileId",
+  ensureValidToken,
+  ctrlWrapper(ctrl.getWalpaperById)
+); // Обновляем токен перед запросом
+router.post(
+  "/walpaper",
+  ensureValidToken,
+  multer.single("file"),
+  ctrlWrapper(ctrl.uploadWalpaper)
+);
 router.post(
   "/upload",
   ensureValidToken,
