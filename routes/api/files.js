@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { files: ctrl } = require("../../controllers");
-const { ctrlWrapper, multer } = require("../../middlewares");
+const { auth, ctrlWrapper, multer } = require("../../middlewares");
 const { ensureValidToken } = require("../../middlewares/refreshTokenDropBox");
 
 router.get("/recipe/:fileId", ensureValidToken, ctrlWrapper(ctrl.getImgById)); // Обновляем токен перед запросом
@@ -17,6 +17,7 @@ router.get(
 ); // Обновляем токен перед запросом
 router.post(
   "/walpaper",
+  auth,
   ensureValidToken,
   multer.single("file"),
   ctrlWrapper(ctrl.uploadWalpaper)

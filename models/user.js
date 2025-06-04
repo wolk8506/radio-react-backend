@@ -38,6 +38,11 @@ const userSchema = new Schema(
       required: true,
       trim: true, // Убирает пробелы из ссылок
     },
+    walpaperURL: {
+      type: String,
+      default: null,
+      trim: true, // Убирает пробелы из ссылок
+    },
     verify: {
       type: Boolean,
       default: false,
