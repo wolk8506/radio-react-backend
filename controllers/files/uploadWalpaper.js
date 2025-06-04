@@ -1,6 +1,7 @@
 require("dotenv").config();
 const { Dropbox } = require("dropbox");
 const fetch = require("isomorphic-fetch"); // Используем совместимую библиотеку для HTTP-запросов
+const { User } = require("../../models"); // Импорт модели пользователя
 
 const uploadWalpaper = async (req, res) => {
   const dbx = new Dropbox({
@@ -9,11 +10,12 @@ const uploadWalpaper = async (req, res) => {
   });
 
   try {
-    // Проверяем, есть ли загруженный файл
+    // Проверяем наличие загруженного файла
     if (!req.file) {
       return res.status(400).json({ message: "Файл не найден" });
     }
 
+    // Формируем путь для хранения файла в Dropbox
     const dropboxPath = `/walpaper/${req.file.originalname}`;
     const fileBuffer = req.file.buffer;
 
@@ -22,6 +24,14 @@ const uploadWalpaper = async (req, res) => {
       path: dropboxPath,
       contents: fileBuffer,
       mode: "add",
+    });
+
+    // Сохраняем информацию об изображении в Mongo:
+    // сохраняем путь к файлу, который потом можно использовать для доступа к изображению,
+    // а также оригинальное имя файла
+    await User.findByIdAndUpdate(req.user._id, {
+      walpaperURL: dropboxPath,
+      walpaperName: req.file.originalname,
     });
 
     res.json({
