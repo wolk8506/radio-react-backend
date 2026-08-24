@@ -7,6 +7,7 @@ const addMovie = require("./addMovie");
 const removeMovie = require("./removeMovie");
 const reorderMovies = require("./reorderMovies");
 const setWatched = require("./setWatched");
+const setVisibility = require("./setVisibility");
 
 module.exports = {
   getCollections,
@@ -18,4 +19,5 @@ module.exports = {
   removeMovie,
   reorderMovies,
   setWatched,
+  setVisibility,
 };

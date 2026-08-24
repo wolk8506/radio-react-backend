@@ -57,10 +57,15 @@ const watchedJoiSchema = Joi.object({
   watched: Joi.boolean().required(),
 });
 
+const visibilityJoiSchema = Joi.object({
+  isPublic: Joi.boolean().required(),
+});
+
 module.exports = {
   FilmLibrary,
   filmLibraryJoiSchema,
   movieJoiSchema,
   orderJoiSchema,
   watchedJoiSchema,
+  visibilityJoiSchema,
 };

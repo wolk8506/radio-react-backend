@@ -8,6 +8,7 @@ const {
   movieJoiSchema,
   orderJoiSchema,
   watchedJoiSchema,
+  visibilityJoiSchema,
 } = require("../../models/filmLibrary");
 
 // Получить коллекции пользователя (свои + общие)
@@ -26,6 +27,13 @@ router.post("/:id/movies", auth, validation(movieJoiSchema), ctrlWrapper(ctrl.ad
 router.delete("/:id/movies/:movieId", auth, ctrlWrapper(ctrl.removeMovie));
 // Изменить порядок фильмов (только владелец)
 router.patch("/:id/movies/order", auth, validation(orderJoiSchema), ctrlWrapper(ctrl.reorderMovies));
+// Сделать подборку общей/личной (только владелец)
+router.patch(
+  "/:id/visibility",
+  auth,
+  validation(visibilityJoiSchema),
+  ctrlWrapper(ctrl.setVisibility),
+);
 // Отметить «просмотрено» (доступно любому зрителю общей коллекции)
 router.patch(
   "/:id/movies/:movieId/watched",
