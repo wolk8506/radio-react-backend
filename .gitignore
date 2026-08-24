@@ -2,3 +2,4 @@ node_modules/
 .env
 config.js
 packege-lock.json
+.DS_Store
