@@ -10,6 +10,7 @@ const authRouter = require("./routes/api/auth");
 const usersRouter = require("./routes/api/users");
 const recipeRouter = require("./routes/api/recipes");
 const filesRouter = require("./routes/api/files");
+const filmLibraryRouter = require("./routes/api/filmLibrary");
 
 const app = express();
 
@@ -37,6 +38,7 @@ app.use("/api/auth", authRouter);
 app.use("/api/user", usersRouter);
 app.use("/api/recipe", recipeRouter);
 app.use("/api/files", filesRouter);
+app.use("/api/filmLibrary", filmLibraryRouter);
 app.use((req, res) => {
   res.status(404).json({ message: "Not found" });
 });
