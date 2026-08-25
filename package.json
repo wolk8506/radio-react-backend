@@ -1,10 +1,11 @@
 {
   "name": "radio-react-backend",
-  "version": "0.0.0",
+  "version": "1.0.12",
   "private": true,
   "scripts": {
     "start": "cross-env NODE_ENV=production node ./bin/server.js",
     "start:dev": "cross-env NODE_ENV=development nodemon ./bin/server.js",
+    "seed": "node scripts/seedAdmin.js",
     "lint": "eslint **/*.js",
     "lint:fix": "eslint --fix **/*.js"
   },
