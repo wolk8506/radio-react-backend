@@ -10,6 +10,10 @@ const authRouter = require("./routes/api/auth");
 const usersRouter = require("./routes/api/users");
 const recipeRouter = require("./routes/api/recipes");
 const filesRouter = require("./routes/api/files");
+const radioRouter = require("./routes/api/radio");
+const filmLibraryRouter = require("./routes/api/filmLibrary");
+const eventsRouter = require("./routes/api/events");
+const currencyRouter = require("./routes/api/currency");
 
 const app = express();
 
@@ -37,6 +41,10 @@ app.use("/api/auth", authRouter);
 app.use("/api/user", usersRouter);
 app.use("/api/recipe", recipeRouter);
 app.use("/api/files", filesRouter);
+app.use("/api/radio", radioRouter);
+app.use("/api/filmLibrary", filmLibraryRouter);
+app.use("/api/events", eventsRouter);
+app.use("/api/currency", currencyRouter);
 app.use((req, res) => {
   res.status(404).json({ message: "Not found" });
 });
@@ -45,5 +53,8 @@ app.use((err, req, res, next) => {
   const { status = 500 } = err;
   res.status(status).json({ message: err.message });
 });
+
+// Централизованный опрос «что играет» для радиостанций (в памяти, без нагрузки на БД)
+require("./helpers/radioNowPlaying").startRadioPolling();
 
 module.exports = app;
