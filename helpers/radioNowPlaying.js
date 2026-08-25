@@ -12,12 +12,9 @@ const STATIONS = [
   { id: 'radio7-hi', name: 'Радио 7 (hi)', url: 'https://stream05.pcradio.ru/radio7_ru-hi' },
   { id: 'radio7-med', name: 'Радио 7 (med)', url: 'https://stream05.pcradio.ru/radio7_ru-med' },
   { id: 'radio7-low', name: 'Радио 7 (low)', url: 'https://stream.pcradio.ru/radio7_ru-low' },
-  { id: 'rusrock', name: 'Русский Рок', url: 'https://rock.amgradio.ru/RusRock?r_bells' },
   { id: 'recordrock', name: 'Record Rock', url: 'https://radiorecord.hostingradio.ru/rock96.aacp' },
-  { id: 'rockradio', name: 'Rock Radio', url: 'https://cast2.my-control-panel.com/proxy/vladas/stream' },
   { id: 'maximum', name: 'Радио Максимум', url: 'https://maximum.hostingradio.ru/maximum96.aacp' },
   { id: 'dfm', name: 'DFM', url: 'https://dfm.hostingradio.ru/dfm96.aacp' },
-  { id: 'kissfmdeep', name: 'Kiss FM Deep', url: 'https://www.liveradio.es/http://online.kissfm.ua/KissFM_Deep_HD' },
 ];
 
 // Кеш «что играет»: id -> { title, artist, track, updatedAt }
@@ -34,6 +31,54 @@ const parseStreamTitle = raw => {
     artist: clean.slice(0, sep).trim(),
     track: clean.slice(sep + 3).trim(),
   };
+};
+
+// Дозагрузка обложки по artist+title через iTunes Search API (для станций без нативной
+// обложки: Rock 181, Record Rock, Maximum, DFM, Energy — где метаданные приходят по ICY/radiobells).
+const coverLookupCache = new Map(); // key "artist|track" -> url | null
+
+const httpsGetJson = u =>
+  new Promise(resolve => {
+    const lib = u.startsWith('https') ? https : http;
+    const req = lib.get(u, { headers: { 'User-Agent': 'radio-nowplaying' }, timeout: 8000 }, res => {
+      let d = '';
+      res.on('data', c => {
+        d += c;
+        if (d.length > 1e6) req.destroy();
+      });
+      res.on('end', () => {
+        try {
+          resolve(JSON.parse(d));
+        } catch {
+          resolve(null);
+        }
+      });
+    });
+    req.on('error', () => resolve(null));
+    req.setTimeout(8000, () => {
+      req.destroy();
+      resolve(null);
+    });
+  });
+
+const enrichCover = (id, artist, track) => {
+  const key = `${artist}|${track}`.trim().toLowerCase();
+  if (!key || key === '|') return;
+  if (coverLookupCache.has(key)) return; // уже искали (результат или null)
+  coverLookupCache.set(key, true);
+  const term = encodeURIComponent(`${artist} ${track}`.trim());
+  httpsGetJson(`https://itunes.apple.com/search?term=${term}&entity=song&limit=1`)
+    .then(j => {
+      const it = j && j.results && j.results[0];
+      let cover = '';
+      if (it && it.artworkUrl100) cover = it.artworkUrl100.replace('100x100bb', '512x512bb');
+      coverLookupCache.set(key, cover || null);
+      const cur = cache.get(id);
+      if (cur && `${cur.artist}|${cur.track}`.trim().toLowerCase() === key && !cur.cover) {
+        cache.set(id, { ...cur, cover });
+      }
+    })
+    .catch(() => coverLookupCache.set(key, null));
 };
 
 // Забирает ICY-метаданные (StreamTitle) одного потока.
@@ -299,6 +344,7 @@ const startLiveIcy = station => {
                   gotTitle = true;
                   const { artist, track } = parseStreamTitle(raw);
                   cache.set(station.id, { title: raw, artist, track, updatedAt: Date.now() });
+                  enrichCover(station.id, artist, track);
                   liveIcyIds.add(station.id);
                   console.log('[icy-live]', station.id, '|', JSON.stringify(raw));
                 }
@@ -392,6 +438,7 @@ const startLiveMetaWs = () => {
         const cover = cur.coverImageUrl300 || cur.coverImageWebp300 || cur.coverImageWebpUrl300 || '';
         for (const id of myIds) {
           cache.set(id, { title: raw, artist, track, cover, updatedAt: Date.now() });
+          if (!cover) enrichCover(id, artist, track);
           liveMetaIds.add(id);
         }
         console.log('[meta-ws]', k, '|', JSON.stringify(raw));
@@ -446,6 +493,7 @@ const pollStation = async station => {
     cover: '',
     updatedAt: Date.now(),
   });
+  enrichCover(station.id, artist, track);
 };
 
 let timer = null;
