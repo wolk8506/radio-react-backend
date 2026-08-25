@@ -1,71 +1,66 @@
 const { Schema, model } = require("mongoose");
 const Joi = require("joi");
 
-// Вложенный документ фильма в подборке
 const movieSchema = new Schema(
   {
-    tmdbId: { type: Number, required: true }, // id фильма из TMDB (используется как movie.id на фронте)
-    title: { type: String, default: "" },
-    poster_path: { type: String, default: null },
-    release_date: { type: String, default: "" },
-    vote_average: { type: Number, default: 0 },
+    tmdbId: { type: Number, required: true },
+    title: { type: String },
+    poster_path: { type: String },
+    release_date: { type: String },
+    vote_average: { type: Number },
     genre_ids: { type: [Number], default: [] },
-    overview: { type: String, default: "" },
+    overview: { type: String },
     media_type: { type: String, enum: ["movie", "tv"], default: "movie" },
-    // кто отметил «просмотрено» — персональная отметка
-    watchedBy: [{ type: Schema.Types.ObjectId, ref: "user" }],
+    watchedBy: [{ type: Schema.Types.ObjectId, ref: "User" }],
   },
   { _id: false }
 );
 
-// Коллекция (подборка) фильмов
 const filmLibrarySchema = new Schema(
   {
-    name: { type: String, required: true, trim: true },
-    owner: { type: Schema.Types.ObjectId, ref: "user", required: true },
-    isPublic: { type: Boolean, default: false }, // false = личная, true = общая
-    movies: { type: [movieSchema], default: [] },
+    name: { type: String, required: true },
+    owner: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    isPublic: { type: Boolean, default: false },
+    movies: [movieSchema],
   },
-  { timestamps: true }
+  { versionKey: false, timestamps: true }
 );
 
-const FilmLibrary = model("filmLibrary", filmLibrarySchema);
+const FilmLibrary = model("FilmLibrary", filmLibrarySchema);
 
-const filmLibraryJoiSchema = Joi.object({
-  name: Joi.string()
-    .required()
-    .messages({ "any.required": "Название подборки обязательно." }),
-  isPublic: Joi.boolean().default(false),
+const createCollectionJoiSchema = Joi.object({
+  name: Joi.string().required(),
+  isPublic: Joi.boolean(),
 });
 
-const movieJoiSchema = Joi.object({
-  id: Joi.number().required(),
-  title: Joi.string().allow("").default(""),
-  poster_path: Joi.any().default(null),
-  release_date: Joi.any().default(""),
-  vote_average: Joi.any().default(0),
-  genre_ids: Joi.any().default([]),
-  overview: Joi.any().default(""),
-  media_type: Joi.any().default("movie"),
-}).unknown(true);
-
-const orderJoiSchema = Joi.object({
-  orderedIds: Joi.array().items(Joi.number()).required(),
-});
-
-const watchedJoiSchema = Joi.object({
-  watched: Joi.boolean().required(),
+const renameCollectionJoiSchema = Joi.object({
+  name: Joi.string().required(),
 });
 
 const visibilityJoiSchema = Joi.object({
   isPublic: Joi.boolean().required(),
 });
 
+const watchedJoiSchema = Joi.object({
+  watched: Joi.boolean().required(),
+});
+
+const reorderJoiSchema = Joi.object({
+  orderedIds: Joi.array().items(Joi.number(), Joi.string()).required(),
+});
+
+const addMovieJoiSchema = Joi.object({
+  id: Joi.number(),
+  tmdbId: Joi.number(),
+  title: Joi.string(),
+}).unknown(true);
+
 module.exports = {
   FilmLibrary,
-  filmLibraryJoiSchema,
-  movieJoiSchema,
-  orderJoiSchema,
-  watchedJoiSchema,
+  createCollectionJoiSchema,
+  renameCollectionJoiSchema,
   visibilityJoiSchema,
+  watchedJoiSchema,
+  reorderJoiSchema,
+  addMovieJoiSchema,
 };

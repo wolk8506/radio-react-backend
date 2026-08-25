@@ -1,28 +1,39 @@
 const { FilmLibrary } = require("../../models");
 const { serializeCollection } = require("./serialize");
+const { NotFound, Forbidden } = require("http-errors");
 
-// Отметка «просмотрено» персональная: меняет только запись текущего пользователя
 const setWatched = async (req, res) => {
   const { id, movieId } = req.params;
-  const { _id } = req.user;
   const { watched } = req.body;
+  const userId = req.user._id;
+
   const collection = await FilmLibrary.findById(id);
-  if (!collection || (String(collection.owner) !== String(_id) && !collection.isPublic)) {
-    return res.status(404).json({ status: "error", code: 404, message: "Not found" });
+  if (!collection) throw new NotFound("Not found");
+
+  if (!collection.isPublic && !collection.owner.equals(userId)) {
+    throw new Forbidden("Access denied");
   }
-  const movie = collection.movies.find(x => String(x.tmdbId) === String(movieId));
-  if (!movie) {
-    return res.status(404).json({ status: "error", code: 404, message: "Movie not found" });
+
+  const movie = collection.movies.find(m => m.tmdbId === Number(movieId));
+  if (!movie) throw new NotFound("Movie not found");
+
+  const uid = userId.toString();
+  const idx = movie.watchedBy.findIndex(u => u.toString() === uid);
+
+  if (watched && idx === -1) {
+    movie.watchedBy.push(userId);
   }
-  if (watched) {
-    if (!movie.watchedBy.some(u => String(u) === String(_id))) {
-      movie.watchedBy.push(_id);
-    }
-  } else {
-    movie.watchedBy = movie.watchedBy.filter(u => String(u) !== String(_id));
+  if (!watched && idx !== -1) {
+    movie.watchedBy.splice(idx, 1);
   }
+
   await collection.save();
-  res.json({ status: "success", code: 200, data: { result: serializeCollection(collection) } });
+
+  res.json({
+    status: "success",
+    code: 200,
+    data: { result: serializeCollection(collection) },
+  });
 };
 
 module.exports = setWatched;

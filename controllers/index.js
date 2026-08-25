@@ -3,6 +3,7 @@ const users = require("./users");
 const recipe = require("./recipes");
 const files = require("./files");
 const filmLibrary = require("./filmLibrary");
+const events = require("./events");
 
 module.exports = {
   auth,
@@ -10,4 +11,5 @@ module.exports = {
   recipe,
   files,
   filmLibrary,
+  events,
 };

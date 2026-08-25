@@ -4,42 +4,53 @@ const router = express.Router();
 const { filmLibrary: ctrl } = require("../../controllers");
 const { auth, validation, ctrlWrapper } = require("../../middlewares");
 const {
-  filmLibraryJoiSchema,
-  movieJoiSchema,
-  orderJoiSchema,
-  watchedJoiSchema,
+  createCollectionJoiSchema,
+  renameCollectionJoiSchema,
   visibilityJoiSchema,
+  watchedJoiSchema,
+  reorderJoiSchema,
+  addMovieJoiSchema,
 } = require("../../models/filmLibrary");
 
-// Получить коллекции пользователя (свои + общие)
 router.get("/", auth, ctrlWrapper(ctrl.getCollections));
-// Получить одну коллекцию
+router.post(
+  "/",
+  auth,
+  validation(createCollectionJoiSchema),
+  ctrlWrapper(ctrl.createCollection)
+);
 router.get("/:id", auth, ctrlWrapper(ctrl.getCollectionById));
-// Создать коллекцию
-router.post("/", auth, validation(filmLibraryJoiSchema), ctrlWrapper(ctrl.createCollection));
-// Переименовать коллекцию (только владелец)
-router.patch("/:id", auth, ctrlWrapper(ctrl.renameCollection));
-// Удалить коллекцию (только владелец)
-router.delete("/:id", auth, ctrlWrapper(ctrl.deleteCollection));
-// Добавить фильм (только владелец)
-router.post("/:id/movies", auth, validation(movieJoiSchema), ctrlWrapper(ctrl.addMovie));
-// Удалить фильм (только владелец)
-router.delete("/:id/movies/:movieId", auth, ctrlWrapper(ctrl.removeMovie));
-// Изменить порядок фильмов (только владелец)
-router.patch("/:id/movies/order", auth, validation(orderJoiSchema), ctrlWrapper(ctrl.reorderMovies));
-// Сделать подборку общей/личной (только владелец)
+router.patch(
+  "/:id",
+  auth,
+  validation(renameCollectionJoiSchema),
+  ctrlWrapper(ctrl.renameCollection)
+);
 router.patch(
   "/:id/visibility",
   auth,
   validation(visibilityJoiSchema),
-  ctrlWrapper(ctrl.setVisibility),
+  ctrlWrapper(ctrl.setVisibility)
 );
-// Отметить «просмотрено» (доступно любому зрителю общей коллекции)
+router.delete("/:id", auth, ctrlWrapper(ctrl.deleteCollection));
+router.post(
+  "/:id/movies",
+  auth,
+  validation(addMovieJoiSchema),
+  ctrlWrapper(ctrl.addMovie)
+);
+router.delete("/:id/movies/:movieId", auth, ctrlWrapper(ctrl.removeMovie));
+router.patch(
+  "/:id/movies/order",
+  auth,
+  validation(reorderJoiSchema),
+  ctrlWrapper(ctrl.reorderMovies)
+);
 router.patch(
   "/:id/movies/:movieId/watched",
   auth,
   validation(watchedJoiSchema),
-  ctrlWrapper(ctrl.setWatched),
+  ctrlWrapper(ctrl.setWatched)
 );
 
 module.exports = router;

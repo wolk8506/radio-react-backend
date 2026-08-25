@@ -2,18 +2,19 @@ const { FilmLibrary } = require("../../models");
 const { serializeCollection } = require("./serialize");
 
 const createCollection = async (req, res) => {
-  const { _id } = req.user;
-  const { name, isPublic } = req.body;
-  const created = await FilmLibrary.create({
-    name: name.trim(),
+  const { name, isPublic = false } = req.body;
+
+  const collection = await FilmLibrary.create({
+    name,
     isPublic: !!isPublic,
-    owner: _id,
+    owner: req.user._id,
     movies: [],
   });
+
   res.status(201).json({
     status: "success",
     code: 201,
-    data: { result: serializeCollection(created) },
+    data: { result: serializeCollection(collection) },
   });
 };
 

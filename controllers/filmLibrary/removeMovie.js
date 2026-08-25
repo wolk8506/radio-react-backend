@@ -1,16 +1,26 @@
 const { FilmLibrary } = require("../../models");
 const { serializeCollection } = require("./serialize");
+const { NotFound, Forbidden } = require("http-errors");
 
 const removeMovie = async (req, res) => {
   const { id, movieId } = req.params;
-  const { _id } = req.user;
+  const userId = req.user._id;
+
   const collection = await FilmLibrary.findById(id);
-  if (!collection || String(collection.owner) !== String(_id)) {
-    return res.status(404).json({ status: "error", code: 404, message: "Not found" });
+  if (!collection) throw new NotFound("Not found");
+
+  if (!collection.owner.equals(userId)) {
+    throw new Forbidden("Access denied");
   }
-  collection.movies = collection.movies.filter(x => String(x.tmdbId) !== String(movieId));
+
+  collection.movies = collection.movies.filter(m => m.tmdbId !== Number(movieId));
   await collection.save();
-  res.json({ status: "success", code: 200, data: { result: serializeCollection(collection) } });
+
+  res.json({
+    status: "success",
+    code: 200,
+    data: { result: serializeCollection(collection) },
+  });
 };
 
 module.exports = removeMovie;

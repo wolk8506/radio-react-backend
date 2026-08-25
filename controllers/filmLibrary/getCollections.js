@@ -1,12 +1,13 @@
 const { FilmLibrary } = require("../../models");
 const { serializeCollection } = require("./serialize");
 
-// Свои коллекции + все общие
 const getCollections = async (req, res) => {
-  const { _id } = req.user;
+  const userId = req.user._id;
+
   const collections = await FilmLibrary.find({
-    $or: [{ owner: _id }, { isPublic: true }],
-  });
+    $or: [{ owner: userId }, { isPublic: true }],
+  }).sort({ createdAt: 1 });
+
   res.json({
     status: "success",
     code: 200,
