@@ -3,6 +3,7 @@ const ctrlWrapper = require("./ctrlWrapper");
 const auth = require("./auth");
 const upload = require("./upload");
 const multer = require("./multer");
+const admin = require("./admin");
 // const ensureValidToken = require("./refreshTokenDropBox");
 // const refreshAccessToken = require("./refreshTokenDropBox");
 
@@ -12,6 +13,7 @@ module.exports = {
   auth,
   upload,
   multer,
+  admin,
   // ensureValidToken,
   // refreshAccessToken,
 };

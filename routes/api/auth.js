@@ -13,6 +13,10 @@ router.post(
 
 router.post("/login", validation(joiLoginSchema), ctrlWrapper(ctrl.login));
 
+router.get("/google", ctrlWrapper(ctrl.googleInit));
+router.post("/google/connect/init", auth, ctrlWrapper(ctrl.googleConnectInit));
+router.get("/google/callback", ctrlWrapper(ctrl.googleCallback));
+
 router.get("/logout", auth, ctrlWrapper(ctrl.logout));
 
 module.exports = router;

@@ -13,7 +13,9 @@ const filesRouter = require("./routes/api/files");
 const radioRouter = require("./routes/api/radio");
 const filmLibraryRouter = require("./routes/api/filmLibrary");
 const eventsRouter = require("./routes/api/events");
+const libraryRouter = require("./routes/api/library");
 const currencyRouter = require("./routes/api/currency");
+const newsRouter = require("./routes/api/news");
 
 const app = express();
 
@@ -44,7 +46,9 @@ app.use("/api/files", filesRouter);
 app.use("/api/radio", radioRouter);
 app.use("/api/filmLibrary", filmLibraryRouter);
 app.use("/api/events", eventsRouter);
+app.use("/api/library", libraryRouter);
 app.use("/api/currency", currencyRouter);
+app.use("/api/news", newsRouter);
 app.use((req, res) => {
   res.status(404).json({ message: "Not found" });
 });
