@@ -8,6 +8,8 @@ const getCurrent = async (req, res) => {
     createdAt,
     _id,
     favorites,
+    googleId,
+    isAdmin,
   } = req.user;
   res.json({
     status: "success",
@@ -21,6 +23,8 @@ const getCurrent = async (req, res) => {
         walpaperURL,
         createdAt,
         favorites,
+        googleId,
+        isAdmin,
         _id,
       },
     },

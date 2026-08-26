@@ -32,20 +32,22 @@ async function seed() {
   if (existing) {
     existing.password = hashPassword;
     existing.verify = true;
+    existing.isAdmin = true;
     existing.verificationToken = shortid();
     existing.avatarURL = avatarURL;
     await existing.save();
-    console.log(`Пользователь ${email} обновлён и подтверждён (verify: true)`);
+    console.log(`Пользователь ${email} обновлён, подтверждён и назначен админом (verify: true, isAdmin: true)`);
   } else {
     await User.create({
       name,
       email,
       password: hashPassword,
       verify: true,
+      isAdmin: true,
       verificationToken: shortid(),
       avatarURL,
     });
-    console.log(`Создан подтверждённый пользователь: ${email} / ${password}`);
+    console.log(`Создан подтверждённый админ: ${email} / ${password}`);
   }
 }
 

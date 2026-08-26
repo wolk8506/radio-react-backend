@@ -2,7 +2,14 @@ const express = require("express");
 const router = express.Router();
 
 const { users: ctrl } = require("../../controllers");
-const { auth, upload, validation, ctrlWrapper } = require("../../middlewares");
+const { listUsers, toggleRole, deleteUser, toggleVerify } = require("../../controllers/users/admin");
+const {
+  auth,
+  admin,
+  upload,
+  validation,
+  ctrlWrapper,
+} = require("../../middlewares");
 const { ensureValidToken } = require("../../middlewares/refreshTokenDropBox");
 const {
   joiSubscriptionSchema,
@@ -55,6 +62,31 @@ router.post(
   "/verify",
   validation(joiResendVerifyEmailSchema),
   ctrlWrapper(ctrl.resendVerifyEmail)
+);
+
+router.get(
+  "/admin/users",
+  auth,
+  admin,
+  ctrlWrapper(listUsers)
+);
+router.patch(
+  "/admin/:id/role",
+  auth,
+  admin,
+  ctrlWrapper(toggleRole)
+);
+router.delete(
+  "/admin/:id",
+  auth,
+  admin,
+  ctrlWrapper(deleteUser)
+);
+router.patch(
+  "/admin/:id/verify",
+  auth,
+  admin,
+  ctrlWrapper(toggleVerify)
 );
 
 module.exports = router;

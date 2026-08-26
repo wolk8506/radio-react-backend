@@ -19,6 +19,11 @@ const userSchema = new Schema(
         "Please provide a valid email address", // Проверка формата email
       ],
     },
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true, // разрешаем несколько null, но уникальность для заданных значений
+    },
     name: {
       type: String,
       required: [true, "Name is required"],
@@ -47,6 +52,10 @@ const userSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    isAdmin: {
+      type: Boolean,
+      default: false,
+    },
     verificationToken: {
       type: String,
       required: [true, "Verify token is required"],
@@ -67,6 +76,15 @@ const userSchema = new Schema(
 userSchema.methods.comparePassword = function (password) {
   return bcrypt.compareSync(password, this.password);
 };
+
+const SUBSCRIPTION_VALUES = ["starter", "pro", "business"];
+
+userSchema.pre("validate", function (next) {
+  if (!SUBSCRIPTION_VALUES.includes(this.subscription)) {
+    this.subscription = "starter";
+  }
+  next();
+});
 
 const User = model("user", userSchema);
 
