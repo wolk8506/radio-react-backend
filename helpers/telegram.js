@@ -1,5 +1,4 @@
 const axios = require("axios");
-const cheerio = require("cheerio");
 
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
@@ -13,6 +12,23 @@ function channelFromUrl(urlOrChannel) {
   return s.replace(/[^\\w_]/g, "");
 }
 
+function decodeEntities(s) {
+  return s
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)));
+}
+
+function stripHtml(s) {
+  return decodeEntities(String(s).replace(/<[^>]+>/g, " "))
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 // Забирает посты публичного Telegram-канала через t.me/s/<channel> (HTML).
 // Возвращает нормализованные объекты, совместимые с fetchFeed().
 async function fetchTelegram(urlOrChannel) {
@@ -22,22 +38,19 @@ async function fetchTelegram(urlOrChannel) {
     headers: { "User-Agent": UA, Accept: "text/html", "Accept-Language": "ru-RU,ru;q=0.9" },
     timeout: 20000,
   });
-  // t.me/s иногда отдаёт HTML с некорректными сущностями (например, "&" не в составе
-  // валидной entity) — это ломает HTML-парсер. Нормализуем разрозненные "&" в "&amp;".
-  const safe = String(data).replace(
-    /&(?!(?:[a-zA-Z][a-zA-Z0-9]*|#[0-9]+|#x[0-9a-fA-F]+);)/g,
-    "&amp;"
-  );
-  const $ = cheerio.load(safe);
+  const html = String(data);
   const items = [];
-  $(".tgme_widget_message").each((_, el) => {
-    const $el = $(el);
-    const dateLink = $el.find("a.tgme_widget_message_date").attr("href") || "";
-    const text = $el.find(".tgme_widget_message_text").text().trim();
-    if (!text) return;
-    const timeStr = $el.find("time").attr("datetime");
-    const publishedAt = timeStr ? new Date(timeStr) : new Date();
-    const link = dateLink || `https://t.me/${channel}`;
+  // Делим страницу на блоки сообщений по открывающему тегу <div class="tgme_widget_message ...">
+  const blocks = html.split(/<div class="tgme_widget_message[ "]/);
+  for (const block of blocks.slice(1)) {
+    const hrefMatch = block.match(/tgme_widget_message_date" href="([^"]+)"/);
+    const dtMatch = block.match(/datetime="([^"]+)"/);
+    const textMatch = block.match(/tgme_widget_message_text[^>]*>([\s\S]*?)<\/div>/);
+    if (!hrefMatch || !textMatch) continue;
+    const text = stripHtml(textMatch[1]);
+    if (!text) continue;
+    const link = hrefMatch[1];
+    const publishedAt = dtMatch ? new Date(dtMatch[1]) : new Date();
     items.push({
       link,
       guid: link,
@@ -46,7 +59,7 @@ async function fetchTelegram(urlOrChannel) {
       author: channel,
       publishedAt,
     });
-  });
+  }
   return items;
 }
 
