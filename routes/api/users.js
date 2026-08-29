@@ -17,9 +17,28 @@ const {
   joiUpdateNameSchema,
   joiUpdateEmailSchema,
   joiChangePasswordSchema,
+  joiCitySchema,
 } = require("../../models/user");
 
 router.get("/current", auth, ctrlWrapper(ctrl.getCurrent));
+
+router.get("/cities", auth, ctrlWrapper(ctrl.getCities));
+router.post(
+  "/cities",
+  auth,
+  validation(joiCitySchema),
+  ctrlWrapper(ctrl.addCity)
+);
+router.patch(
+  "/cities/:city/home",
+  auth,
+  ctrlWrapper(ctrl.setHomeCity)
+);
+router.delete(
+  "/cities/:city",
+  auth,
+  ctrlWrapper(ctrl.removeCity)
+);
 
 router.post(
   "/change-password",

@@ -12,7 +12,7 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const GOOGLE_REDIRECT_URI = `${SERVER_URL}/api/auth/google/callback`;
 
-// state -> { mode: 'login' | 'connect', userId?, expires }
+// state -> { mode: 'login' | 'connect', userId?, frontBase?, expires }
 const oauthStates = new Map();
 setInterval(() => {
   const now = Date.now();
@@ -20,6 +20,38 @@ setInterval(() => {
 }, 5 * 60 * 1000);
 
 const genState = () => crypto.randomBytes(16).toString("hex");
+
+// Разрешённые origin для возврата после OAuth (защита от open-redirect).
+// Разрешаем origin из FRONTEND_URL и origin страницы, инициировавшей запрос.
+const getAllowedOrigins = req => {
+  const origins = new Set();
+  try {
+    origins.add(new URL(FRONTEND_URL).origin);
+  } catch (e) {
+    /* noop */
+  }
+  const referer = req.get("referer");
+  if (referer) {
+    try {
+      origins.add(new URL(referer).origin);
+    } catch (e) {
+      /* noop */
+    }
+  }
+  return origins;
+};
+
+const pickFrontBase = (req, origins) => {
+  const redirect = req.query.redirect || (req.body && req.body.redirect);
+  if (!redirect) return null;
+  try {
+    const u = new URL(redirect);
+    if (origins.has(u.origin)) return redirect;
+  } catch (e) {
+    /* noop */
+  }
+  return null;
+};
 
 const buildAuthUrl = state => {
   const params = new URLSearchParams({
@@ -34,26 +66,30 @@ const buildAuthUrl = state => {
   return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 };
 
-const redirectToFront = (res, status, token) => {
+const redirectToFront = (res, status, token, frontBase) => {
+  const base = frontBase || `${FRONTEND_URL}/auth/google/callback`;
   const q = new URLSearchParams();
   if (token) q.set("token", token);
   q.set("status", status);
-  res.redirect(`${FRONTEND_URL}/auth/google/callback?${q.toString()}`);
+  res.redirect(`${base}?${q.toString()}`);
 };
 
 // GET /api/auth/google — начало OAuth для входа/регистрации
 const googleInit = (req, res) => {
   const state = genState();
-  oauthStates.set(state, { mode: "login", expires: Date.now() + 10 * 60 * 1000 });
+  const frontBase = pickFrontBase(req, getAllowedOrigins(req));
+  oauthStates.set(state, { mode: "login", frontBase, expires: Date.now() + 10 * 60 * 1000 });
   res.redirect(buildAuthUrl(state));
 };
 
 // POST /api/auth/google/connect/init — начало привязки (только для залогиненного)
 const googleConnectInit = (req, res) => {
   const state = genState();
+  const frontBase = pickFrontBase(req, getAllowedOrigins(req));
   oauthStates.set(state, {
     mode: "connect",
     userId: req.user._id,
+    frontBase,
     expires: Date.now() + 10 * 60 * 1000,
   });
   res.json({ url: buildAuthUrl(state) });
@@ -93,21 +129,21 @@ const googleCallback = async (req, res) => {
     // 3а) привязка к уже залогиненному аккаунту
     if (st.mode === "connect") {
       const user = await User.findById(st.userId);
-      if (!user) return redirectToFront(res, "error");
+      if (!user) return redirectToFront(res, "error", null, st.frontBase);
       user.googleId = sub;
       if (!user.avatarURL && picture) user.avatarURL = picture;
       await user.save();
-      return redirectToFront(res, "connected");
+      return redirectToFront(res, "connected", null, st.frontBase);
     }
 
     // 3б) вход / регистрация
     const user = await User.findOne({ googleId: sub });
     if (user) {
       // аккаунт уже привязан к Google
-      if (!user.verify) return redirectToFront(res, "pending");
+      if (!user.verify) return redirectToFront(res, "pending", null, st.frontBase);
       const jwtToken = jwt.sign({ id: user._id }, SECRET_KEY);
       await User.findByIdAndUpdate(user._id, { token: jwtToken });
-      return redirectToFront(res, "ok", jwtToken);
+      return redirectToFront(res, "ok", jwtToken, st.frontBase);
     }
 
     // googleId нет — проверяем, не занят ли email обычным аккаунтом
@@ -115,7 +151,7 @@ const googleCallback = async (req, res) => {
     if (byEmail) {
       // существующий аккаунт (email/пароль): НЕ создаём дубль,
       // просим привязать Google через личный кабинет
-      return redirectToFront(res, "email_exists");
+      return redirectToFront(res, "email_exists", null, st.frontBase);
     }
 
     // новый пользователь — создаём НЕПОДТВЕРЖДЁННЫМ (ручное подтверждение, как сейчас)
@@ -132,7 +168,7 @@ const googleCallback = async (req, res) => {
       avatarURL: picture || gravatar,
       verify: false,
     });
-    return redirectToFront(res, "pending");
+    return redirectToFront(res, "pending", null, st.frontBase);
   } catch (e) {
     console.error("[google] callback error:", e.message);
     return redirectToFront(res, "error");

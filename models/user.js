@@ -66,6 +66,30 @@ const userSchema = new Schema(
         ref: "Recipe", // Ссылка на коллекцию рецептов
       },
     ],
+    cities: [
+      {
+        city: {
+          type: String,
+          required: true,
+        },
+        home: {
+          type: Boolean,
+          default: false,
+        },
+        favorite: {
+          type: Boolean,
+          default: true,
+        },
+        lat: {
+          type: Number,
+          default: null,
+        },
+        lon: {
+          type: Number,
+          default: null,
+        },
+      },
+    ],
   },
   {
     versionKey: false, // Отключение поля `__v`
@@ -151,6 +175,17 @@ const joiUpdateNameSchema = Joi.object({
   }),
 });
 
+// Схема добавления города в избранное пользователя
+const joiCitySchema = Joi.object({
+  city: Joi.string().required().messages({
+    "any.required": "Название города обязательно.",
+  }),
+  home: Joi.boolean().default(false),
+  favorite: Joi.boolean().default(true),
+  lat: Joi.number(),
+  lon: Joi.number(),
+});
+
 // Схема изменения пароля
 const joiChangePasswordSchema = Joi.object({
   userId: Joi.string().required().messages({
@@ -176,4 +211,5 @@ module.exports = {
   joiUpdateNameSchema,
   joiUpdateEmailSchema,
   joiChangePasswordSchema,
+  joiCitySchema,
 };
