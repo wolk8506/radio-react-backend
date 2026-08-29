@@ -20,6 +20,8 @@ const INTERVAL_MIN = Number(process.env.NEWS_FETCH_INTERVAL_MIN) || 15;
 const LLM_DELAY_MS = Number(process.env.NEWS_LLM_DELAY_MS) || 4500;
 const MAX_NEW_PER_SOURCE = Number(process.env.NEWS_MAX_NEW_PER_SOURCE) || 40;
 const GEMINI_BATCH = Number(process.env.NEWS_GEMINI_BATCH) || 8;
+// Глубина хранения новостей (дней). 0 — без ограничений. Защищает БД (напр. Mongo 500MB).
+const RETENTION_DAYS = Number(process.env.NEWS_RETENTION_DAYS) || 7;
 
 let isRunning = false;
 
@@ -128,6 +130,22 @@ async function processSource(source) {
   console.log(`[news] ${source.title}: added ${added} new items`);
 }
 
+// Удаляет новости старше RETENTION_DAYS, чтобы не раздувать БД.
+async function cleanupOldItems() {
+  if (RETENTION_DAYS <= 0) return;
+  const cutoff = new Date(Date.now() - RETENTION_DAYS * 86400 * 1000);
+  try {
+    const res = await NewsItem.deleteMany({
+      $or: [{ publishedAt: { $lt: cutoff } }, { publishedAt: { $exists: false } }],
+    });
+    if (res.deletedCount) {
+      console.log(`[news] cleaned ${res.deletedCount} items older than ${RETENTION_DAYS}d`);
+    }
+  } catch (e) {
+    console.error("[news] cleanup failed:", e.message);
+  }
+}
+
 async function runOnce() {
   if (isRunning) return;
   isRunning = true;
@@ -137,6 +155,7 @@ async function runOnce() {
     for (const source of sources) {
       await processSource(source);
     }
+    await cleanupOldItems();
   } catch (e) {
     console.error("[news] worker error:", e.message);
   } finally {

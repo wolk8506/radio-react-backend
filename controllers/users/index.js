@@ -7,6 +7,7 @@ const updateName = require("./updateName");
 const updateEmail = require("./updateEmail");
 const changePassword = require("./changePassword");
 const admin = require("./admin");
+const { getCities, addCity, removeCity, setHomeCity } = require("./cities");
 
 module.exports = {
   getCurrent,
@@ -18,4 +19,8 @@ module.exports = {
   updateEmail,
   changePassword,
   admin,
+  getCities,
+  addCity,
+  removeCity,
+  setHomeCity,
 };

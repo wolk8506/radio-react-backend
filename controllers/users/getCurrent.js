@@ -10,6 +10,7 @@ const getCurrent = async (req, res) => {
     favorites,
     googleId,
     isAdmin,
+    cities,
   } = req.user;
   res.json({
     status: "success",
@@ -25,6 +26,7 @@ const getCurrent = async (req, res) => {
         favorites,
         googleId,
         isAdmin,
+        cities,
         _id,
       },
     },
