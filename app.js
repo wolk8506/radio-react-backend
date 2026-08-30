@@ -16,6 +16,7 @@ const eventsRouter = require("./routes/api/events");
 const libraryRouter = require("./routes/api/library");
 const currencyRouter = require("./routes/api/currency");
 const newsRouter = require("./routes/api/news");
+const timemanagementRouter = require("./routes/api/timemanagement");
 
 const app = express();
 
@@ -49,6 +50,7 @@ app.use("/api/events", eventsRouter);
 app.use("/api/library", libraryRouter);
 app.use("/api/currency", currencyRouter);
 app.use("/api/news", newsRouter);
+app.use("/api/timemanagement", timemanagementRouter);
 app.use((req, res) => {
   res.status(404).json({ message: "Not found" });
 });
