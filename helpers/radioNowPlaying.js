@@ -21,6 +21,37 @@ const STATIONS = [
 const cache = new Map();
 STATIONS.forEach(s => cache.set(s.id, { title: '', artist: '', track: '', cover: '', updatedAt: 0 }));
 
+// История воспроизведения: id -> array of { title, artist, track, cover, playedAt }
+const historyCache = new Map();
+STATIONS.forEach(s => historyCache.set(s.id, []));
+
+const HISTORY_MAX_AGE = 60 * 60 * 1000; // 1 hour
+const HISTORY_MAX_ITEMS = 100;
+
+const addToHistory = (stationId, trackInfo) => {
+  const history = historyCache.get(stationId) || [];
+  const now = Date.now();
+  
+  // Don't add duplicate consecutive tracks
+  const last = history[history.length - 1];
+  if (last && last.track === trackInfo.track && last.artist === trackInfo.artist) {
+    return;
+  }
+  
+  history.push({
+    title: trackInfo.title,
+    artist: trackInfo.artist,
+    track: trackInfo.track,
+    cover: trackInfo.cover || '',
+    playedAt: now,
+  });
+  
+  // Clean old entries (older than 1 hour) and limit size
+  const cutoff = now - HISTORY_MAX_AGE;
+  const filtered = history.filter(item => item.playedAt > cutoff).slice(-HISTORY_MAX_ITEMS);
+  historyCache.set(stationId, filtered);
+};
+
 const parseStreamTitle = raw => {
   if (!raw) return { artist: '', track: '' };
   // Формат обычно "Artist - Title" / "Artist — Title" или просто "Title"
@@ -343,7 +374,9 @@ const startLiveIcy = station => {
                 if (raw) {
                   gotTitle = true;
                   const { artist, track } = parseStreamTitle(raw);
-                  cache.set(station.id, { title: raw, artist, track, updatedAt: Date.now() });
+                  const trackInfo = { title: raw, artist, track, updatedAt: Date.now() };
+                  cache.set(station.id, trackInfo);
+                  addToHistory(station.id, trackInfo);
                   enrichCover(station.id, artist, track);
                   liveIcyIds.add(station.id);
                   console.log('[icy-live]', station.id, '|', JSON.stringify(raw));
@@ -437,7 +470,9 @@ const startLiveMetaWs = () => {
         const { artist, track } = parseStreamTitle(raw);
         const cover = cur.coverImageUrl300 || cur.coverImageWebp300 || cur.coverImageWebpUrl300 || '';
         for (const id of myIds) {
-          cache.set(id, { title: raw, artist, track, cover, updatedAt: Date.now() });
+          const trackInfo = { title: raw, artist, track, cover, updatedAt: Date.now() };
+          cache.set(id, trackInfo);
+          addToHistory(id, trackInfo);
           if (!cover) enrichCover(id, artist, track);
           liveMetaIds.add(id);
         }
@@ -486,13 +521,9 @@ const pollStation = async station => {
   }
   const { artist, track } = parseStreamTitle(raw);
   console.log('[nowplaying]', station.id, '| source:', source, '| title:', JSON.stringify(raw));
-  cache.set(station.id, {
-    title: raw,
-    artist,
-    track,
-    cover: '',
-    updatedAt: Date.now(),
-  });
+  const trackInfo = { title: raw, artist, track, cover: '', updatedAt: Date.now() };
+  cache.set(station.id, trackInfo);
+  addToHistory(station.id, trackInfo);
   enrichCover(station.id, artist, track);
 };
 
@@ -528,12 +559,20 @@ const getNowPlayingById = id => {
   return { id, name: station.name, ...cache.get(id) };
 };
 
+const getHistoryById = id => {
+  const station = STATIONS.find(s => s.id === id);
+  if (!station) return null;
+  const history = historyCache.get(id) || [];
+  return { id, name: station.name, history };
+};
+
 module.exports = {
   STATIONS,
   startRadioPolling,
   getStationList,
   getNowPlaying,
   getNowPlayingById,
+  getHistoryById,
   fetchNowPlayingIcecast,
   fetchNowPlayingRadiobells,
 };
