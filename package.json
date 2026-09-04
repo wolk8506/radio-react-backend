@@ -1,6 +1,6 @@
 {
   "name": "radio-react-backend",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "private": true,
   "scripts": {
     "start": "cross-env NODE_ENV=production node ./bin/server.js",

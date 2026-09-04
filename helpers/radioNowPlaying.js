@@ -28,6 +28,8 @@ STATIONS.forEach(s => historyCache.set(s.id, []));
 const HISTORY_MAX_AGE = 60 * 60 * 1000; // 1 hour
 const HISTORY_MAX_ITEMS = 100;
 
+const coverLookupCache = new Map(); // key "artist|track" -> url | null
+
 const addToHistory = (stationId, trackInfo) => {
   const history = historyCache.get(stationId) || [];
   const now = Date.now();
@@ -37,12 +39,19 @@ const addToHistory = (stationId, trackInfo) => {
   if (last && last.track === trackInfo.track && last.artist === trackInfo.artist) {
     return;
   }
+
+  let cover = trackInfo.cover || '';
+  if (!cover) {
+    const k = `${trackInfo.artist}|${trackInfo.track}`.trim().toLowerCase();
+    const cached = typeof coverLookupCache !== 'undefined' ? coverLookupCache.get(k) : undefined;
+    if (typeof cached === 'string' && cached) cover = cached;
+  }
   
   history.push({
     title: trackInfo.title,
     artist: trackInfo.artist,
     track: trackInfo.track,
-    cover: trackInfo.cover || '',
+    cover,
     playedAt: now,
   });
   
@@ -66,7 +75,7 @@ const parseStreamTitle = raw => {
 
 // Дозагрузка обложки по artist+title через iTunes Search API (для станций без нативной
 // обложки: Rock 181, Record Rock, Maximum, DFM, Energy — где метаданные приходят по ICY/radiobells).
-const coverLookupCache = new Map(); // key "artist|track" -> url | null
+// coverLookupCache объявлен выше
 
 const httpsGetJson = u =>
   new Promise(resolve => {
@@ -95,7 +104,24 @@ const httpsGetJson = u =>
 const enrichCover = (id, artist, track) => {
   const key = `${artist}|${track}`.trim().toLowerCase();
   if (!key || key === '|') return;
-  if (coverLookupCache.has(key)) return; // уже искали (результат или null)
+  const cached = coverLookupCache.get(key);
+  if (cached !== undefined) {
+    // уже искали: если есть строковый cover — сразу применим к текущему кешу/истории
+    if (typeof cached === 'string' && cached) {
+      const cur = cache.get(id);
+      if (cur && `${cur.artist}|${cur.track}`.trim().toLowerCase() === key && !cur.cover) {
+        cache.set(id, { ...cur, cover: cached });
+      }
+      const hist = historyCache.get(id);
+      if (hist) {
+        for (let i = hist.length - 1; i >= 0; i--) {
+          const h = hist[i];
+          if (!h.cover && `${h.artist}|${h.track}`.trim().toLowerCase() === key) h.cover = cached;
+        }
+      }
+    }
+    return;
+  }
   coverLookupCache.set(key, true);
   const term = encodeURIComponent(`${artist} ${track}`.trim());
   httpsGetJson(`https://itunes.apple.com/search?term=${term}&entity=song&limit=1`)
@@ -104,9 +130,18 @@ const enrichCover = (id, artist, track) => {
       let cover = '';
       if (it && it.artworkUrl100) cover = it.artworkUrl100.replace('100x100bb', '512x512bb');
       coverLookupCache.set(key, cover || null);
-      const cur = cache.get(id);
-      if (cur && `${cur.artist}|${cur.track}`.trim().toLowerCase() === key && !cur.cover) {
-        cache.set(id, { ...cur, cover });
+      if (cover) {
+        const cur = cache.get(id);
+        if (cur && `${cur.artist}|${cur.track}`.trim().toLowerCase() === key && !cur.cover) {
+          cache.set(id, { ...cur, cover });
+        }
+        const hist = historyCache.get(id);
+        if (hist) {
+          for (let i = hist.length - 1; i >= 0; i--) {
+            const h = hist[i];
+            if (!h.cover && `${h.artist}|${h.track}`.trim().toLowerCase() === key) h.cover = cover;
+          }
+        }
       }
     })
     .catch(() => coverLookupCache.set(key, null));
