@@ -601,6 +601,93 @@ const getHistoryById = id => {
   return { id, name: station.name, history };
 };
 
+// Детальная информация о треке: iTunes (primary) + Deezer (fallback)
+const trackInfoCache = new Map(); // key artist|track -> { data, ts }
+const TRACKINFO_TTL = 24 * 60 * 60 * 1000;
+
+const cleanForSearch = s =>
+  (s || '')
+    .replace(/\[[^\]]*\]/g, ' ')
+    .replace(/\([^)]*(remix|mix|edit|version|clean|explicit|remaster|radio|live|feat\.?|ft\.?|acoustic|cover)[^)]*\)/gi, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
+const fmtDuration = ms => {
+  if (!ms) return '';
+  const s = Math.round(ms / 1000);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+};
+
+const getTrackInfo = async (artist, track) => {
+  const a = (artist || '').trim();
+  const t = (track || '').trim();
+  if (!a && !t) return null;
+  if (a.length < 2 || t.length < 2) return null;
+  // пропускаем рекламу/джитлы
+  if (/^(181\.fm|listen\.fm|тбанк|додо|а7 |фильм|предпринимательский|автоиндустрия|телеканал|галс|фск|сбер|авито)/i.test(`${a} ${t}`)) return null;
+
+  const key = `${a}|${t}`.toLowerCase();
+  const cached = trackInfoCache.get(key);
+  if (cached && Date.now() - cached.ts < TRACKINFO_TTL) return cached.data;
+
+  const ca = cleanForSearch(a) || a;
+  const ct = cleanForSearch(t) || t;
+
+  // 1) iTunes
+  try {
+    const term = encodeURIComponent(`${ca} ${ct}`.trim());
+    const j = await httpsGetJson(`https://itunes.apple.com/search?term=${term}&entity=song&limit=1`);
+    const it = j && j.results && j.results[0];
+    if (it) {
+      const data = {
+        source: 'itunes',
+        artist: it.artistName || a,
+        track: it.trackName || t,
+        album: it.collectionName || '',
+        genre: it.primaryGenreName || '',
+        year: it.releaseDate ? String(it.releaseDate).slice(0, 4) : '',
+        releaseDate: it.releaseDate ? String(it.releaseDate).slice(0, 10) : '',
+        duration: fmtDuration(it.trackTimeMillis),
+        durationMs: it.trackTimeMillis || 0,
+        cover: it.artworkUrl100 ? it.artworkUrl100.replace('100x100bb', '512x512bb') : '',
+        preview: it.previewUrl || '',
+        trackUrl: it.trackViewUrl || '',
+        albumUrl: it.collectionViewUrl || '',
+      };
+      trackInfoCache.set(key, { data, ts: Date.now() });
+      return data;
+    }
+  } catch {}
+
+  // 2) Deezer fallback
+  try {
+    const q = encodeURIComponent(`artist:"${ca}" track:"${ct}"`);
+    const j = await httpsGetJson(`https://api.deezer.com/search?q=${q}&limit=1`);
+    const d = j && j.data && j.data[0];
+    if (d) {
+      const data = {
+        source: 'deezer',
+        artist: (d.artist && d.artist.name) || a,
+        track: d.title || t,
+        album: (d.album && d.album.title) || '',
+        genre: '',
+        year: '',
+        releaseDate: '',
+        duration: fmtDuration((d.duration || 0) * 1000),
+        durationMs: (d.duration || 0) * 1000,
+        cover: (d.album && (d.album.cover_xl || d.album.cover_big)) || '',
+        preview: d.preview || '',
+        trackUrl: d.link || '',
+        albumUrl: '',
+      };
+      trackInfoCache.set(key, { data, ts: Date.now() });
+      return data;
+    }
+  } catch {}
+
+  return null;
+};
+
 module.exports = {
   STATIONS,
   startRadioPolling,
@@ -608,6 +695,7 @@ module.exports = {
   getNowPlaying,
   getNowPlayingById,
   getHistoryById,
+  getTrackInfo,
   fetchNowPlayingIcecast,
   fetchNowPlayingRadiobells,
 };
