@@ -129,6 +129,19 @@ const userSchema = new Schema(
           excludeRule: String,
         },
       ],
+      todos: [
+        {
+          id: String,
+          title: String,
+          date: String,
+          done: Boolean,
+          doneDate: String,
+          priority: String,
+          rollover: String,
+          postponed: Number,
+          createdAt: Number,
+        },
+      ],
     },
   },
   {
