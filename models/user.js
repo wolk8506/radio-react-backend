@@ -111,6 +111,8 @@ const userSchema = new Schema(
           exclusions: [String],
           marks: Schema.Types.Mixed,
           archived: Boolean,
+          exercise: String,
+          withWeight: Boolean,
         },
       ],
       plans: [
