@@ -113,6 +113,135 @@ router.get("/convert", async (req, res) => {
   }
 });
 
+// Нефть: Yahoo Finance (текущая цена, server-side, без ключа) + FRED (история, без ключа).
+// Stooq не используется — отдаёт JS-проверку вместо CSV.
+const YAHOO_UA = { "User-Agent": "Mozilla/5.0 (radio-react)" };
+const OIL_SYMBOLS = { brent: "BZ=F", wti: "CL=F" };
+const OIL_FRED = { brent: "DCOILBRENTEU", wti: "DCOILWTICO" };
+
+const fetchYahooQuote = async yahooSym => {
+  const { data } = await axios.get(`https://query1.finance.yahoo.com/v8/finance/chart/${yahooSym}?interval=1d&range=5d`, {
+    timeout: 7000,
+    headers: YAHOO_UA,
+  });
+  const meta = data?.chart?.result?.[0]?.meta;
+  const price = meta?.regularMarketPrice;
+  if (!price) return null;
+  const prevClose = meta?.chartPreviousClose || meta?.previousClose;
+  return {
+    price,
+    change: prevClose ? Number((((price - prevClose) / prevClose) * 100).toFixed(2)) : null,
+    date: meta?.regularMarketTime
+      ? new Date(meta.regularMarketTime * 1000).toISOString().slice(0, 10)
+      : null,
+  };
+};
+
+const fetchFredHistory = async fredId => {
+  const { data } = await axios.get(`https://fred.stlouisfed.org/graph/fredgraph.csv?id=${fredId}`, { timeout: 10000 });
+  return String(data)
+    .trim()
+    .split("\n")
+    .slice(1)
+    .map(l => l.split(","))
+    .filter(c => c.length >= 2 && c[1] !== "." && c[1] !== "" && parseFloat(c[1]) > 0)
+    .map(c => ({ date: c[0], price: Number(parseFloat(c[1]).toFixed(2)) }));
+};
+
+// кеш нефти (Yahoo/FRED, бесплатно, без ключа)
+const cacheOil = { data: null, ts: 0 };
+
+// GET /api/currency/oil — Brent + WTI, бесплатно, без ключа
+router.get("/oil", async (req, res) => {
+  try {
+    if (cacheOil.data && Date.now() - cacheOil.ts < 5 * 60 * 1000) {
+      return res.json({ status: "success", code: 200, data: { result: cacheOil.data } });
+    }
+    const [brentS, wtiS] = await Promise.allSettled([
+      fetchYahooQuote(OIL_SYMBOLS.brent),
+      fetchYahooQuote(OIL_SYMBOLS.wti),
+    ]);
+    const brent = brentS.status === "fulfilled" ? brentS.value : null;
+    const wti = wtiS.status === "fulfilled" ? wtiS.value : null;
+    if (!brent && !wti) return res.status(502).json({ status: "error", code: 502, message: "oil unavailable" });
+    const result = { brent, wti };
+    cacheOil.data = result;
+    cacheOil.ts = Date.now();
+    res.json({ status: "success", code: 200, data: { result } });
+  } catch {
+    res.status(502).json({ status: "error", code: 502, message: "oil unavailable" });
+  }
+});
+
+// кеш истории крипты/нефти для графика
+const cacheCryptoHistory = new Map();
+const cacheOilHistory = new Map();
+
+// GET /api/currency/crypto-history?coin=bitcoin&vs=usd&days=30 — CoinGecko market_chart, бесплатно, без ключа
+router.get("/crypto-history", async (req, res) => {
+  try {
+    const coin = (req.query.coin || "bitcoin").trim().toLowerCase();
+    const vs = (req.query.vs || "usd").trim().toLowerCase();
+    const days = Math.min(Math.max(parseInt(req.query.days, 10) || 30, 1), 365);
+    const key = `${coin}:${vs}:${days}`;
+    const cached = cacheCryptoHistory.get(key);
+    if (cached && Date.now() - cached.ts < 15 * 60 * 1000) {
+      return res.json({ status: "success", code: 200, data: { result: cached.data } });
+    }
+    const { data } = await axios.get(`https://api.coingecko.com/api/v3/coins/${encodeURIComponent(coin)}/market_chart`, {
+      params: { vs_currency: vs, days },
+      timeout: 10000,
+    });
+    const result = (data?.prices || []).map(([ts, price]) => ({
+      date: new Date(ts).toISOString().slice(0, 10),
+      price: Number(Number(price).toFixed(2)),
+    }));
+    if (!result.length) return res.status(502).json({ status: "error", code: 502, message: "crypto history unavailable" });
+    cacheCryptoHistory.set(key, { data: result, ts: Date.now() });
+    res.json({ status: "success", code: 200, data: { result } });
+  } catch {
+    res.status(502).json({ status: "error", code: 502, message: "crypto history unavailable" });
+  }
+});
+
+// GET /api/currency/oil-history?symbol=brent&days=30 — FRED daily + Yahoo fallback, бесплатно, без ключа
+router.get("/oil-history", async (req, res) => {
+  try {
+    const name = (req.query.symbol || "brent").trim().toLowerCase() === "wti" ? "wti" : "brent";
+    const days = Math.min(Math.max(parseInt(req.query.days, 10) || 30, 1), 365);
+    const key = `${name}:${days}`;
+    const cached = cacheOilHistory.get(key);
+    if (cached && Date.now() - cached.ts < 60 * 60 * 1000) {
+      return res.json({ status: "success", code: 200, data: { result: cached.data } });
+    }
+    let result = [];
+    try {
+      const rows = await fetchFredHistory(OIL_FRED[name]);
+      result = rows.slice(-days);
+    } catch {}
+    if (!result.length) {
+      // fallback: Yahoo closes
+      const { data } = await axios.get(
+        `https://query1.finance.yahoo.com/v8/finance/chart/${OIL_SYMBOLS[name]}?interval=1d&range=${days > 90 ? '1y' : days > 30 ? '3mo' : '1mo'}`,
+        { timeout: 10000, headers: YAHOO_UA }
+      );
+      const r = data?.chart?.result?.[0];
+      const ts = r?.timestamp || [];
+      const closes = r?.indicators?.quote?.[0]?.close || [];
+      result = ts
+        .map((t, i) => ({ date: new Date(t * 1000).toISOString().slice(0, 10), price: closes[i] }))
+        .filter(x => x.price > 0)
+        .map(x => ({ date: x.date, price: Number(x.price.toFixed(2)) }))
+        .slice(-days);
+    }
+    if (!result.length) return res.status(502).json({ status: "error", code: 502, message: "oil history unavailable" });
+    cacheOilHistory.set(key, { data: result, ts: Date.now() });
+    res.json({ status: "success", code: 200, data: { result } });
+  } catch {
+    res.status(502).json({ status: "error", code: 502, message: "oil history unavailable" });
+  }
+});
+
 // кеш для banks Mono (429 защита)
 const cacheBanksMono = { data: [], ts: 0 };
 const cacheBanksPrivat = { data: [], ts: 0 };
